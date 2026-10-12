@@ -1,0 +1,19 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+
+*.log
+.env
+.env.*
+!.env.example
+
+# Local project context and visual QA artifacts
+AGENTS.md
+sources/
+.superpowers/
+artifacts/
+design-qa.md
+*-implementation.png
+*-comparison.png
+responsive-*.png
