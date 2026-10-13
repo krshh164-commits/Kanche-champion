@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { SHOOTER_MAX_X, SHOOTER_MIN_X } from '../src/config';
 import { ShotController } from '../src/input/ShotController';
 import type { GameState } from '../src/game/gameState';
 
@@ -57,6 +58,37 @@ describe('ShotController', () => {
       expect(s.releaseCapture).toHaveBeenCalledWith(1);
       s.controller.destroy();
     }
+  });
+
+  it('positions horizontally without confirming, then launches on the next swipe', () => {
+    const s = setup();
+    s.canvas.dispatchEvent(pointer('pointerdown', 210, 664, 1, 'touch', 100));
+    s.canvas.dispatchEvent(pointer('pointermove', 126, 666, 1, 'touch', 160));
+    s.canvas.dispatchEvent(pointer('pointerup', 126, 666, 1, 'touch', 180));
+
+    expect(s.onPosition).toHaveBeenLastCalledWith(126);
+    expect(s.onPositionConfirmed).not.toHaveBeenCalled();
+    expect(s.onShoot).not.toHaveBeenCalled();
+
+    s.canvas.dispatchEvent(pointer('pointerdown', 126, 664, 2, 'touch', 220));
+    s.canvas.dispatchEvent(pointer('pointermove', 148, 600, 2, 'touch', 270));
+    s.canvas.dispatchEvent(pointer('pointerup', 158, 554, 2, 'touch', 300));
+
+    expect(s.onPositionConfirmed).toHaveBeenCalledOnce();
+    expect(s.onShoot).toHaveBeenCalledOnce();
+    expect(s.onShoot.mock.calls[0]?.[0].velocity.y).toBeLessThan(0);
+  });
+
+  it('clamps horizontal positioning to the aiming pad limits', () => {
+    const s = setup();
+    s.canvas.dispatchEvent(pointer('pointerdown', 210, 664, 1, 'mouse', 100));
+    s.canvas.dispatchEvent(pointer('pointermove', -100, 664, 1, 'mouse', 140));
+    s.canvas.dispatchEvent(pointer('pointermove', 600, 664, 1, 'mouse', 170));
+    s.canvas.dispatchEvent(pointer('pointerup', 600, 664, 1, 'mouse', 180));
+
+    expect(s.onPosition.mock.calls.map(([x]) => x)).toEqual([SHOOTER_MIN_X, SHOOTER_MAX_X]);
+    expect(s.onPositionConfirmed).not.toHaveBeenCalled();
+    expect(s.onShoot).not.toHaveBeenCalled();
   });
 
   it('rejects rapid taps and emits one valid outside-canvas shot', () => {

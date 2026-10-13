@@ -21,13 +21,13 @@ export const PHYSICS = {
   settleAngularSpeed: 0.012,
   settleFrames: 12,
   targetDensity: 0.001,
-  shooterDensity: 0.00135,
+  shooterDensity: 0.00175,
 } as const;
 
 export const SHOT = {
   minDrag: 12,
   maxDrag: 110,
-  maxVelocity: 22,
+  maxVelocity: 28,
   maxSwipeSpeed: 1.4,
 } as const;
 

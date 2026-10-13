@@ -1,7 +1,7 @@
-import { SHOOTER_RADIUS, SHOT, VIRTUAL_HEIGHT, VIRTUAL_WIDTH } from '../config';
+import { SHOOTER_MAX_X, SHOOTER_MIN_X, SHOOTER_RADIUS, SHOT, VIRTUAL_HEIGHT, VIRTUAL_WIDTH } from '../config';
 import type { GameState } from '../game/gameState';
 import type { Point } from '../game/rules';
-import { calculateShot, type AimPreview, type ShotVector } from './shotMath';
+import { calculateShot, clampShooterX, type AimPreview, type ShotVector } from './shotMath';
 
 interface Options {
   getState(): GameState;
@@ -16,6 +16,9 @@ interface Options {
 export class ShotController {
   private activePointer: number | null = null;
   private gestureOrigin: Point | null = null;
+  private pointerOrigin: Point | null = null;
+  private gestureMode: 'pending' | 'positioning' | 'aiming' | null = null;
+  private grabOffsetX = 0;
   private gestureStartedAt = 0;
   private destroyed = false;
 
@@ -46,9 +49,11 @@ export class ShotController {
     const point = this.toVirtual(event);
     if (!this.hitsShooter(point)) return;
     event.preventDefault();
-    if (state === 'positioning') this.options.onPositionConfirmed();
     this.activePointer = event.pointerId;
     this.gestureOrigin = { ...this.options.getShooter() };
+    this.pointerOrigin = point;
+    this.gestureMode = state === 'positioning' ? 'pending' : 'aiming';
+    this.grabOffsetX = point.x - this.gestureOrigin.x;
     this.gestureStartedAt = event.timeStamp;
     this.canvas.setPointerCapture(event.pointerId);
   };
@@ -56,8 +61,22 @@ export class ShotController {
   private onPointerMove = (event: PointerEvent) => {
     if (event.pointerId !== this.activePointer) return;
     event.preventDefault();
-    if (!this.gestureOrigin) return;
+    if (!this.gestureOrigin || !this.pointerOrigin) return;
     const point = this.toVirtual(event);
+    if (this.gestureMode === 'pending') {
+      const dx = point.x - this.pointerOrigin.x;
+      const dy = point.y - this.pointerOrigin.y;
+      if (Math.abs(dx) >= SHOT.minDrag && Math.abs(dx) > Math.abs(dy)) this.gestureMode = 'positioning';
+      else if (calculateShot(this.gestureOrigin, point, event.timeStamp - this.gestureStartedAt, SHOT)) {
+        this.gestureMode = 'aiming';
+        this.options.onPositionConfirmed();
+      }
+    }
+    if (this.gestureMode === 'positioning') {
+      this.options.onPosition(clampShooterX(point.x - this.grabOffsetX, SHOOTER_MIN_X, SHOOTER_MAX_X));
+      this.options.onAim(null);
+      return;
+    }
     const shot = calculateShot(this.gestureOrigin, point, event.timeStamp - this.gestureStartedAt, SHOT);
     this.options.onAim(shot ? { ...shot, origin: { ...this.gestureOrigin }, pointer: point } : null);
   };
@@ -65,11 +84,14 @@ export class ShotController {
   private onPointerUp = (event: PointerEvent) => {
     if (event.pointerId !== this.activePointer) return;
     event.preventDefault();
-    const shot = this.gestureOrigin
+    const shot = this.gestureMode !== 'positioning' && this.gestureOrigin
       ? calculateShot(this.gestureOrigin, this.toVirtual(event), event.timeStamp - this.gestureStartedAt, SHOT)
       : null;
     this.options.onAim(null);
-    if (shot) this.options.onShoot(shot);
+    if (shot) {
+      if (this.gestureMode === 'pending') this.options.onPositionConfirmed();
+      this.options.onShoot(shot);
+    }
     this.finishCapture(event.pointerId);
   };
 
@@ -85,6 +107,9 @@ export class ShotController {
     if (this.canvas.hasPointerCapture(pointerId)) this.canvas.releasePointerCapture(pointerId);
     this.activePointer = null;
     this.gestureOrigin = null;
+    this.pointerOrigin = null;
+    this.gestureMode = null;
+    this.grabOffsetX = 0;
     this.gestureStartedAt = 0;
   }
 
