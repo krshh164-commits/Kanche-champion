@@ -17,9 +17,9 @@ export const PHYSICS = {
   restitution: 0.78,
   collisionFriction: 0.04,
   frictionAir: 0.024,
-  settleSpeed: 0.08,
-  settleAngularSpeed: 0.008,
-  settleFrames: 24,
+  settleSpeed: 0.12,
+  settleAngularSpeed: 0.012,
+  settleFrames: 12,
   targetDensity: 0.001,
   shooterDensity: 0.00135,
 } as const;
@@ -27,7 +27,7 @@ export const PHYSICS = {
 export const SHOT = {
   minDrag: 12,
   maxDrag: 110,
-  maxVelocity: 20,
+  maxVelocity: 22,
   maxSwipeSpeed: 1.4,
 } as const;
 

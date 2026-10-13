@@ -28,7 +28,7 @@ describe('shot math', () => {
 
   it('caps long fast swipes at maximum velocity', () => {
     const long = calculateShot({ x: 200, y: 664 }, { x: 200, y: 440 }, 40, limits);
-    expect(long?.speed).toBeCloseTo(20);
+    expect(long?.speed).toBeCloseTo(22);
     expect(long?.dragDistance).toBe(110);
   });
 

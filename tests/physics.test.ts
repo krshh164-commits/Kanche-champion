@@ -220,6 +220,30 @@ describe('PhysicsWorld', () => {
     expect(physics.getSnapshots().some((body) => body.id === targetId)).toBe(false);
   });
 
+  it('settles nearly still bodies quickly without stopping bodies that are still moving', () => {
+    const physics = new PhysicsWorld();
+    physics.loadLevel({
+      definition: { id: 99, name: 'Settlement Test', moveLimit: 1, threeStarThreshold: 1, twoStarThreshold: 1, targets: [] },
+      targets: [],
+      obstacles: [],
+    });
+    const inspectable = physics as unknown as { shooter: Matter.Body };
+
+    Matter.Body.setVelocity(inspectable.shooter, { x: PHYSICS.settleSpeed * 0.8, y: 0 });
+    for (let frame = 0; frame < PHYSICS.settleFrames - 1; frame += 1) physics.step(PHYSICS.fixedStepMs);
+    expect(physics.allBodiesSettled()).toBe(false);
+    physics.step(PHYSICS.fixedStepMs);
+    expect(physics.allBodiesSettled()).toBe(true);
+
+    physics.resetShooter();
+    for (let frame = 0; frame < PHYSICS.settleFrames * 2; frame += 1) {
+      Matter.Body.setVelocity(inspectable.shooter, { x: PHYSICS.settleSpeed * 4, y: 0 });
+      physics.step(PHYSICS.fixedStepMs);
+    }
+    expect(physics.allBodiesSettled()).toBe(false);
+    expect(physics.getSnapshots()[0]!.speed).toBeGreaterThan(PHYSICS.settleSpeed);
+  });
+
   it('creates one immovable Level 2 obstacle without counting it as a marble', () => {
     const physics = new PhysicsWorld();
     physics.loadLevel(validateLevel(LEVELS.find((level) => level.id === 2)!, geometry));
