@@ -13,54 +13,37 @@ const geometry = {
 } as const;
 
 describe('Level 4', () => {
-  it('defines five blue, two green, and the two-per-color objective in five moves', () => {
+  it('defines three blue, two green, and the two-per-color objective in four moves', () => {
     const level = LEVELS.find((entry) => entry.id === 4);
     expect(level).toBeDefined();
     expect(level).toMatchObject({
-      moveLimit: 5,
+      moveLimit: 4,
+      threeStarThreshold: 3,
+      twoStarThreshold: 4,
       objectives: [{ color: 'blue', count: 2 }, { color: 'green', count: 2 }],
     });
-    expect(level?.targets.filter((target) => target.color === 'blue')).toHaveLength(5);
+    expect(level?.targets).toHaveLength(5);
+    expect(level?.targets.filter((target) => target.color === 'blue')).toHaveLength(3);
     expect(level?.targets.filter((target) => target.color === 'green')).toHaveLength(2);
   });
 
-  it('loads seven non-overlapping targets and exactly five static triangles', () => {
+  it('loads five safely spaced targets with no obstacles', () => {
     const level = LEVELS.find((entry) => entry.id === 4)!;
     const resolved = validateLevel(level, geometry);
-    expect(resolved.targets).toHaveLength(7);
-    expect(resolved.obstacles).toHaveLength(5);
-    expect(resolved.obstacles.every((obstacle) => obstacle.shape === 'triangle')).toBe(true);
-    expect(resolved.obstacles.every((obstacle) => obstacle.color === '#1E1E1E')).toBe(true);
+    expect(resolved.targets).toHaveLength(5);
+    expect(resolved.obstacles).toHaveLength(0);
+
+    for (let first = 0; first < resolved.targets.length; first += 1) {
+      for (let second = first + 1; second < resolved.targets.length; second += 1) {
+        const a = resolved.targets[first]!;
+        const b = resolved.targets[second]!;
+        expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThanOrEqual(110);
+      }
+    }
 
     const physics = new PhysicsWorld();
     physics.loadLevel(resolved);
-    expect(physics.getObstacleSnapshots()).toHaveLength(5);
-    expect(physics.getObstacleSnapshots().every((obstacle) => obstacle.isStatic)).toBe(true);
-    expect(physics.getSnapshots().filter((body) => body.kind === 'target')).toHaveLength(7);
-  });
-
-  it('scales every triangle to 70 percent and places one at board center', () => {
-    const resolved = validateLevel(LEVELS.find((entry) => entry.id === 4)!, geometry);
-    const triangles = resolved.obstacles.map((obstacle) => {
-      if (obstacle.shape !== 'triangle') throw new Error('Level 4 obstacle must be triangular');
-      const xs = obstacle.vertices.map(({ x }) => x);
-      const ys = obstacle.vertices.map(({ y }) => y);
-      return {
-        width: Math.max(...xs) - Math.min(...xs),
-        height: Math.max(...ys) - Math.min(...ys),
-        centerX: xs.reduce((sum, value) => sum + value, 0) / 3,
-        centerY: ys.reduce((sum, value) => sum + value, 0) / 3,
-      };
-    });
-
-    expect(triangles.map(({ width, height }) => [Number(width.toFixed(8)), Number(height.toFixed(8))])).toEqual([
-      [38.5, 42],
-      [38.5, 52.5],
-      [35, 49],
-      [49, 70],
-      [42, 49],
-    ]);
-    expect(triangles[4]?.centerX).toBeCloseTo(210, 8);
-    expect(triangles[4]?.centerY).toBeCloseTo(350, 8);
+    expect(physics.getObstacleSnapshots()).toHaveLength(0);
+    expect(physics.getSnapshots().filter((body) => body.kind === 'target')).toHaveLength(5);
   });
 });

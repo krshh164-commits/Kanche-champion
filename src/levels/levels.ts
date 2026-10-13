@@ -92,78 +92,25 @@ export const LEVELS: readonly LevelDefinition[] = [
   {
     id: 4,
     name: 'Color Gates',
-    moveLimit: 5,
+    moveLimit: 4,
     threeStarThreshold: 3,
     twoStarThreshold: 4,
     formation: {
       kind: 'central-scatter',
-      description: 'Five blue and two green marbles among five inward-facing triangles',
+      description: 'Three blue and two green marbles in an open, evenly spaced formation',
     },
     objectives: [
       { color: 'blue', count: 2 },
       { color: 'green', count: 2 },
     ],
     targets: [
-      { x: 0.2887323943661972, y: 0.27918781725888325, color: 'blue' },
-      { x: 0.5, y: 0.25380710659898476, color: 'blue' },
-      { x: 0.7112676056338029, y: 0.2918781725888325, color: 'blue' },
-      { x: 0.21830985915492956, y: 0.5329949238578681, color: 'blue' },
-      { x: 0.7816901408450704, y: 0.5329949238578681, color: 'blue' },
-      { x: 0.323943661971831, y: 0.7233502538071066, color: 'green' },
-      { x: 0.676056338028169, y: 0.7233502538071066, color: 'green' },
+      { x: 0.08, y: 0.18, color: 'blue' },
+      { x: 0.5, y: 0.18, color: 'blue' },
+      { x: 0.92, y: 0.18, color: 'blue' },
+      { x: 0.22, y: 0.66, color: 'green' },
+      { x: 0.78, y: 0.66, color: 'green' },
     ],
-    obstacles: [
-      {
-        id: 'level-4-upper-left-triangle',
-        shape: 'triangle',
-        vertices: [
-          { x: 0.10753012048192771, y: 0.10520361990950226 },
-          { x: 0.22349397590361447, y: 0.12895927601809956 },
-          { x: 0.19608433734939756, y: 0.2002262443438914 },
-        ],
-        color: '#1E1E1E',
-      },
-      {
-        id: 'level-4-upper-right-triangle',
-        shape: 'triangle',
-        vertices: [
-          { x: 0.7777108433734939, y: 0.07692307692307693 },
-          { x: 0.8936746987951807, y: 0.1165158371040724 },
-          { x: 0.81355421686747, y: 0.19570135746606335 },
-        ],
-        color: '#1E1E1E',
-      },
-      {
-        id: 'level-4-middle-left-triangle',
-        shape: 'triangle',
-        vertices: [
-          { x: 0.05271084337349398, y: 0.4343891402714932 },
-          { x: 0.15813253012048192, y: 0.4502262443438914 },
-          { x: 0.08433734939759036, y: 0.5452488687782805 },
-        ],
-        color: '#1E1E1E',
-      },
-      {
-        id: 'level-4-lower-right-triangle',
-        shape: 'triangle',
-        vertices: [
-          { x: 0.8057228915662651, y: 0.669683257918552 },
-          { x: 0.9533132530120482, y: 0.7013574660633484 },
-          { x: 0.9006024096385542, y: 0.8280542986425339 },
-        ],
-        color: '#1E1E1E',
-      },
-      {
-        id: 'level-4-lower-left-triangle',
-        shape: 'triangle',
-        vertices: [
-          { x: 0.43323293172690763, y: 0.5082956259426848 },
-          { x: 0.5597389558232931, y: 0.48453996983408754 },
-          { x: 0.5070281124497992, y: 0.5953996983408748 },
-        ],
-        color: '#1E1E1E',
-      },
-    ],
+    obstacles: [],
   },
   {
     id: 5,
@@ -173,20 +120,19 @@ export const LEVELS: readonly LevelDefinition[] = [
     twoStarThreshold: 4,
     formation: {
       kind: 'arc-maze',
-      description: 'Mixed blue and green marbles between a top arc and two edge obstacles',
+      description: 'Six mixed blue and green marbles in a balanced 3–2–1 formation',
     },
     objectives: [
       { color: 'blue', count: 3 },
-      { color: 'green', count: 4 },
+      { color: 'green', count: 3 },
     ],
     targets: [
-      { x: 0.14788732394366197, y: 0.27918781725888325, color: 'blue' },
-      { x: 0.5176056338028169, y: 0.44416243654822335, color: 'blue' },
-      { x: 0.5880281690140845, y: 0.799492385786802, color: 'blue' },
-      { x: 0.852112676056338, y: 0.2918781725888325, color: 'green' },
-      { x: 0.7288732394366197, y: 0.583756345177665, color: 'green' },
-      { x: 0.21830985915492956, y: 0.8756345177664975, color: 'green' },
-      { x: 0.5, y: 0.9771573604060914, color: 'green' },
+      { x: 0.28, y: 0.28, color: 'blue' },
+      { x: 0.5, y: 0.28, color: 'green' },
+      { x: 0.72, y: 0.28, color: 'blue' },
+      { x: 0.38, y: 0.52, color: 'green' },
+      { x: 0.62, y: 0.52, color: 'blue' },
+      { x: 0.5, y: 0.76, color: 'green' },
     ],
     obstacles: [
       {

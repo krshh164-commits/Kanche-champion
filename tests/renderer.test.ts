@@ -109,3 +109,16 @@ describe('aiming feedback', () => {
     });
   });
 });
+
+describe('striker positioning affordance', () => {
+  it('uses a soft shadow only while the striker can be moved horizontally', () => {
+    expect(renderer.getShooterShadow('positioning')).toEqual({
+      visible: true,
+      color: 'rgba(31,31,31,.16)',
+      blur: 9,
+      offsetY: 5,
+    });
+    expect(renderer.getShooterShadow('aiming')).toEqual({ visible: false });
+    expect(renderer.getShooterShadow('shot')).toEqual({ visible: false });
+  });
+});

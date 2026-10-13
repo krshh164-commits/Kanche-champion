@@ -24,7 +24,7 @@ describe('shipped level data', () => {
     for (const level of LEVELS) {
       expect(level.threeStarThreshold).toBeLessThanOrEqual(level.twoStarThreshold);
       expect(level.twoStarThreshold).toBeLessThanOrEqual(level.moveLimit);
-      expect(level.targets.length).toBe(level.id === 3 || level.id === 6 || level.id === 7 ? 4 : level.id >= 4 ? 7 : 6);
+      expect(level.targets.length).toBe(level.id === 3 || level.id === 6 || level.id === 7 ? 4 : level.id === 4 ? 5 : 6);
       const resolved = validateLevel(level, geometry);
       expect(resolved.targets).toHaveLength(level.targets.length);
       for (const [index, target] of resolved.targets.entries()) {

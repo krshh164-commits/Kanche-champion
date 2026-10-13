@@ -178,6 +178,12 @@ export function getAimPaint(locked: boolean) {
     : { stroke: 'rgba(31,31,31,.72)', lineWidth: 2, lineDash: [6, 6], endpointRadius: 0 };
 }
 
+export function getShooterShadow(state: GameState) {
+  return state === 'positioning'
+    ? { visible: true, color: 'rgba(31,31,31,.16)', blur: 9, offsetY: 5 } as const
+    : { visible: false } as const;
+}
+
 export class CanvasRenderer {
   readonly effects = new EffectSystem();
   private readonly obstacleReveal = new ObstacleRevealEffect();
@@ -211,7 +217,7 @@ export class CanvasRenderer {
 
     for (const snapshot of frame.snapshots) {
       if (snapshot.kind === 'shooter') {
-        this.drawShooterMarble(snapshot.x, snapshot.y, snapshot.radius);
+        this.drawShooterMarble(snapshot.x, snapshot.y, snapshot.radius, frame.state);
         continue;
       }
 
@@ -327,7 +333,20 @@ export class CanvasRenderer {
     c.restore();
   }
 
-  private drawShooterMarble(x: number, y: number, radius: number) {
+  private drawShooterMarble(x: number, y: number, radius: number, state: GameState) {
+    const shadow = getShooterShadow(state);
+    if (shadow.visible) {
+      const c = this.context;
+      c.save();
+      c.fillStyle = shadow.color;
+      c.shadowColor = shadow.color;
+      c.shadowBlur = shadow.blur;
+      c.shadowOffsetY = shadow.offsetY;
+      c.beginPath();
+      c.ellipse(x, y + radius * 0.72, radius * 0.68, radius * 0.16, 0, 0, Math.PI * 2);
+      c.fill();
+      c.restore();
+    }
     const rect = getMarbleDrawRect(x, y, radius);
     this.context.save();
     this.context.imageSmoothingEnabled = true;

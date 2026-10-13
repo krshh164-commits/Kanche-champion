@@ -19,22 +19,28 @@ const geometry = {
 describe('Level 5 Arc Maze', () => {
   it('defines the requested level, marble colors, and full-clear objectives', () => {
     const level = LEVELS.find((entry) => entry.id === 5);
+    if (!level) throw new Error('Level 5 must exist');
     expect(level).toMatchObject({
       id: 5,
       name: 'Arc Maze',
       moveLimit: 5,
       threeStarThreshold: 3,
       twoStarThreshold: 4,
-      objectives: [{ color: 'blue', count: 3 }, { color: 'green', count: 4 }],
+      objectives: [{ color: 'blue', count: 3 }, { color: 'green', count: 3 }],
     });
-    expect(level?.targets).toHaveLength(7);
-    expect(level?.targets.filter(({ color }) => color === 'blue')).toHaveLength(3);
-    expect(level?.targets.filter(({ color }) => color === 'green')).toHaveLength(4);
+    expect(level.targets).toHaveLength(6);
+    expect(level.targets.filter(({ color }) => color === 'blue')).toHaveLength(3);
+    expect(level.targets.filter(({ color }) => color === 'green')).toHaveLength(3);
+
+    const rowCounts = [...new Set(level.targets.map(({ y }) => y))]
+      .map((y) => level.targets.filter((target) => target.y === y).length)
+      .sort((a, b) => b - a);
+    expect(rowCounts).toEqual([3, 2, 1]);
   });
 
   it('validates the new three-obstacle layout with clipped edge geometry', () => {
     const resolved = validateLevel(LEVELS.find((entry) => entry.id === 5)!, geometry);
-    expect(resolved.targets).toHaveLength(7);
+    expect(resolved.targets).toHaveLength(6);
     expect(resolved.obstacles.map(({ shape }) => shape)).toEqual(['polygon', 'polygon', 'polygon']);
     expect(resolved.obstacles.map(({ id }) => id)).toEqual([
       'level-5-top-left-square',
@@ -76,10 +82,10 @@ describe('Level 5 Arc Maze', () => {
     expect(obstacleSnapshots.some((obstacle) => obstacle.segments)).toBe(false);
   });
 
-  it('tracks both color objectives to zero and wins only when all seven are cleared after settlement', () => {
+  it('tracks both color objectives to zero and wins only when all six are cleared after settlement', () => {
     const resolved = validateLevel(LEVELS.find((entry) => entry.id === 5)!, geometry);
     const colors = new Map(resolved.targets.map(({ id, color }) => [id, color]));
-    const requirements = new Map([['blue', 3], ['green', 4]] as const);
+    const requirements = new Map([['blue', 3], ['green', 3]] as const);
     const snapshots = resolved.targets.map((target) => ({
       ...target,
       kind: 'target' as const,
@@ -90,15 +96,15 @@ describe('Level 5 Arc Maze', () => {
 
     expect(getRemainingObjectives(snapshots, colors, ['blue', 'green'], requirements)).toEqual([
       { color: 'blue', remaining: 3 },
-      { color: 'green', remaining: 4 },
+      { color: 'green', remaining: 3 },
     ]);
     expect(getRemainingObjectives([], colors, ['blue', 'green'], requirements)).toEqual([
       { color: 'blue', remaining: 0 },
       { color: 'green', remaining: 0 },
     ]);
-    expect(calculateOutcome({ cleared: 7, originalTargetTotal: 7, movesLeft: 1, settled: false, terminal: false, objectivesComplete: true })).toBeNull();
-    expect(calculateOutcome({ cleared: 6, originalTargetTotal: 7, movesLeft: 1, settled: true, terminal: false, objectivesComplete: false })).toBeNull();
-    expect(calculateOutcome({ cleared: 7, originalTargetTotal: 7, movesLeft: 1, settled: true, terminal: false, objectivesComplete: true })).toBe('won');
+    expect(calculateOutcome({ cleared: 6, originalTargetTotal: 6, movesLeft: 1, settled: false, terminal: false, objectivesComplete: true })).toBeNull();
+    expect(calculateOutcome({ cleared: 5, originalTargetTotal: 6, movesLeft: 1, settled: true, terminal: false, objectivesComplete: false })).toBeNull();
+    expect(calculateOutcome({ cleared: 6, originalTargetTotal: 6, movesLeft: 1, settled: true, terminal: false, objectivesComplete: true })).toBe('won');
   });
 
   it('shows the actual current level in the existing level control', () => {
@@ -107,10 +113,10 @@ describe('Level 5 Arc Maze', () => {
     hud.update({
       movesLeft: 5,
       cleared: 0,
-      targetTotal: 7,
+      targetTotal: 6,
       paused: false,
       currentLevelId: 5,
-      objectives: [{ color: 'blue', remaining: 3 }, { color: 'green', remaining: 4 }],
+      objectives: [{ color: 'blue', remaining: 3 }, { color: 'green', remaining: 3 }],
     });
     expect(root.querySelector('.level-button')?.textContent).toContain('LEVEL 5');
     expect(root.textContent).not.toContain('LEVEL 22');
