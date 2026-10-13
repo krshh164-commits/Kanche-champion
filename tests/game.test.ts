@@ -306,6 +306,60 @@ describe('GameModel', () => {
     expect(model.snapshot().state).toBe('settling');
   });
 
+  it('reveals only the hidden obstacle named by a striker collision event', () => {
+    const model = new GameModel();
+    model.startRound({ moveLimit: 8, targetTotal: 4, shooterX: 210 });
+    model.confirmPosition();
+    model.commitShot();
+    const revealObstacle = vi.fn();
+    const playCollision = vi.fn();
+    const game = Object.create(GameModule.Game.prototype) as {
+      physicsTick(): void;
+      model: GameModel;
+      physics: {
+        step(): Array<{ type: string; intensity?: number; obstacleId?: string }>;
+        getSnapshots(): MarbleSnapshot[];
+        removeTarget(): boolean;
+        allBodiesSettled(): boolean;
+      };
+      renderer: { revealObstacle(id: string): void };
+      audio: { playCollision(intensity: number): void; playClear(): void };
+      currentLevel: { obstacles: Array<{ id: string; shape: 'rectangle'; hidden?: boolean }> };
+      targetColors: Map<string, string>;
+      shooterResetDuringShot: boolean;
+    };
+    Object.assign(game, {
+      model,
+      physics: {
+        step: () => [
+          { type: 'collision', intensity: 2 },
+          { type: 'shooter-obstacle-collision', obstacleId: 'level-7-hidden-center-square' },
+          { type: 'shooter-obstacle-collision', obstacleId: 'level-7-left-block' },
+        ],
+        getSnapshots: () => [],
+        removeTarget: () => false,
+        allBodiesSettled: () => false,
+      },
+      renderer: { revealObstacle },
+      audio: { playCollision, playClear: vi.fn() },
+      currentLevel: {
+        obstacles: [
+          { id: 'level-7-hidden-center-square', shape: 'rectangle', hidden: true },
+          { id: 'level-7-left-block', shape: 'rectangle' },
+        ],
+      },
+      targetColors: new Map(),
+      shooterResetDuringShot: false,
+    });
+
+    game.physicsTick();
+
+    expect(playCollision).toHaveBeenCalledOnce();
+    expect(playCollision).toHaveBeenCalledWith(2);
+    expect(revealObstacle).toHaveBeenCalledOnce();
+    expect(revealObstacle).toHaveBeenCalledWith('level-7-hidden-center-square');
+  });
+
   it('pause is orthogonal and restart creates a clean equivalent round', () => {
     const game = new GameModel();
     game.startRound({ moveLimit: 4, targetTotal: 3, shooterX: 210 });

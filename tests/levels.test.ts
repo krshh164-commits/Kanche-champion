@@ -14,7 +14,7 @@ const geometry: LevelGeometry = {
 
 describe('shipped level data', () => {
   it('preserves the easy first level alongside later levels', () => {
-    expect(LEVELS).toHaveLength(6);
+    expect(LEVELS).toHaveLength(7);
     expect(LEVELS[0]).toMatchObject({ id: 1, name: 'First Break', moveLimit: 6 });
     expect(LEVELS[0]?.targets).toHaveLength(6);
     expect(new Set(LEVELS[0]?.targets.map((target) => target.color))).toEqual(new Set(['teal']));
@@ -24,7 +24,7 @@ describe('shipped level data', () => {
     for (const level of LEVELS) {
       expect(level.threeStarThreshold).toBeLessThanOrEqual(level.twoStarThreshold);
       expect(level.twoStarThreshold).toBeLessThanOrEqual(level.moveLimit);
-      expect(level.targets.length).toBe(level.id === 3 || level.id === 6 ? 4 : level.id >= 4 ? 7 : 6);
+      expect(level.targets.length).toBe(level.id === 3 || level.id === 6 || level.id === 7 ? 4 : level.id >= 4 ? 7 : 6);
       const resolved = validateLevel(level, geometry);
       expect(resolved.targets).toHaveLength(level.targets.length);
       for (const [index, target] of resolved.targets.entries()) {

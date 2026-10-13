@@ -95,8 +95,8 @@ describe('HUD', () => {
 
     const completed = root.querySelector<HTMLButtonElement>('.level-option[data-level-id="1"]')!;
     const current = root.querySelector<HTMLButtonElement>('.level-option[data-level-id="2"]')!;
-    const unlocked = root.querySelector<HTMLButtonElement>('.level-option[data-level-id="6"]')!;
-    const unbuilt = root.querySelector<HTMLButtonElement>('.level-option[data-level-id="7"]')!;
+    const unlocked = root.querySelector<HTMLButtonElement>('.level-option[data-level-id="7"]')!;
+    const unbuilt = root.querySelector<HTMLButtonElement>('.level-option[data-level-id="8"]')!;
     expect(completed.classList.contains('is-completed')).toBe(true);
     expect(completed.classList.contains('is-current')).toBe(false);
     expect(completed.disabled).toBe(false);
@@ -116,7 +116,7 @@ describe('HUD', () => {
     unbuilt.click();
     expect(onSelectLevel).not.toHaveBeenCalled();
     unlocked.click();
-    expect(onSelectLevel).toHaveBeenCalledWith(6);
+    expect(onSelectLevel).toHaveBeenCalledWith(7);
     expect(root.querySelector('[aria-label="Pause game"]')).toBeNull();
     expect(root.querySelector('[aria-label="Resume game"]')).toBeNull();
     expect(root.querySelectorAll('.hud-card')).toHaveLength(3);

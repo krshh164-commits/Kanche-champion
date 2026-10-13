@@ -175,7 +175,14 @@ export class Game {
 
   private physicsTick() {
     if (this.model.snapshot().state === 'shot') this.model.beginSettling();
-    for (const event of this.physics.step(PHYSICS.fixedStepMs)) this.audio.playCollision(event.intensity);
+    for (const event of this.physics.step(PHYSICS.fixedStepMs)) {
+      if (event.type === 'collision') {
+        this.audio.playCollision(event.intensity);
+        continue;
+      }
+      const obstacle = this.currentLevel?.obstacles.find(({ id }) => id === event.obstacleId);
+      if (obstacle?.shape === 'rectangle' && obstacle.hidden) this.renderer.revealObstacle(event.obstacleId);
+    }
     let cleared = false;
     for (const snapshot of this.physics.getSnapshots()) {
       if (

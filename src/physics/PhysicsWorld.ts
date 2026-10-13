@@ -10,10 +10,9 @@ import { getArcSegmentVertices } from '../levels/obstacleGeometry';
 import type { ResolvedLevel } from '../levels/levelTypes';
 import type { ObstacleVertex, ResolvedObstacle } from '../levels/levelTypes';
 
-export interface PhysicsEvent {
-  type: 'collision';
-  intensity: number;
-}
+export type PhysicsEvent =
+  | { type: 'collision'; intensity: number }
+  | { type: 'shooter-obstacle-collision'; obstacleId: string };
 
 interface BodyInfo {
   id: string;
@@ -69,6 +68,12 @@ export class PhysicsWorld {
         const relative = Matter.Vector.sub(pair.bodyA.velocity, pair.bodyB.velocity);
         const intensity = Matter.Vector.magnitude(relative);
         if (intensity > 0.25) this.pendingEvents.push({ type: 'collision', intensity });
+        const shooterObstacleId = pair.bodyA.label === 'shooter' && this.obstacles.has(pair.bodyB.label)
+          ? pair.bodyB.label
+          : pair.bodyB.label === 'shooter' && this.obstacles.has(pair.bodyA.label)
+            ? pair.bodyA.label
+            : null;
+        if (shooterObstacleId) this.pendingEvents.push({ type: 'shooter-obstacle-collision', obstacleId: shooterObstacleId });
       }
     });
   }

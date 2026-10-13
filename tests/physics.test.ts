@@ -276,15 +276,39 @@ describe('PhysicsWorld', () => {
     expect(obstacles).toHaveLength(2);
     expect(obstacles.every((obstacle) => obstacle.isStatic)).toBe(true);
     expect(obstacles.map((obstacle) => obstacle.id)).toEqual([
-      'level-3-left-triangle',
-      'level-3-right-triangle',
+      'level-3-upper-right-block',
+      'level-3-left-wedge',
     ]);
     expect(obstacles.map((obstacle) => obstacle.vertices)).toEqual([
-      [{ x: 48, y: 150 }, { x: 105, y: 155 }, { x: 62, y: 232 }],
-      [{ x: 270, y: 128 }, { x: 370, y: 150 }, { x: 330, y: 235 }],
+      [
+        { x: expect.closeTo(134, 5), y: expect.closeTo(138, 5) },
+        { x: expect.closeTo(400, 5), y: expect.closeTo(134, 5) },
+        { x: expect.closeTo(400, 5), y: expect.closeTo(330, 5) },
+      ],
+      [
+        { x: expect.closeTo(20, 5), y: expect.closeTo(205, 5) },
+        { x: expect.closeTo(205, 5), y: expect.closeTo(333, 5) },
+        { x: expect.closeTo(20, 5), y: expect.closeTo(462, 5) },
+      ],
     ]);
     expect(physics.getSnapshots().filter((body) => body.kind === 'target')).toHaveLength(4);
     expect(physics.getTargetMasses()).toHaveLength(4);
+  });
+
+  it('reports a striker collision with the Level 7 hidden block exactly once on contact', () => {
+    const physics = new PhysicsWorld();
+    physics.loadLevel(validateLevel(LEVELS.find((level) => level.id === 7)!, geometry));
+    physics.applyShot({ x: 0, y: -20 });
+
+    const hits = [];
+    for (let frame = 0; frame < 90; frame += 1) {
+      hits.push(...physics.step(PHYSICS.fixedStepMs).filter((event) => event.type === 'shooter-obstacle-collision'));
+    }
+
+    expect(hits).toEqual([{
+      type: 'shooter-obstacle-collision',
+      obstacleId: 'level-7-hidden-center-square',
+    }]);
   });
 
   it('removes Level 2 obstacles when Level 1 loads', () => {

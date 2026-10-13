@@ -92,3 +92,20 @@ describe('target marble rendering contract', () => {
     });
   });
 });
+
+describe('aiming feedback', () => {
+  it('switches from a clear guide to an amber locked direction line', () => {
+    expect(renderer.getAimPaint(false)).toEqual({
+      stroke: 'rgba(31,31,31,.72)',
+      lineWidth: 2,
+      lineDash: [6, 6],
+      endpointRadius: 0,
+    });
+    expect(renderer.getAimPaint(true)).toEqual({
+      stroke: 'rgba(215,141,57,.96)',
+      lineWidth: 3.5,
+      lineDash: [],
+      endpointRadius: 4,
+    });
+  });
+});

@@ -4,7 +4,7 @@ import type { MarbleSnapshot } from '../game/rules';
 import type { TargetColor } from '../levels/levelTypes';
 import type { ResolvedObstacle, ResolvedRectangleObstacle, ResolvedTriangleObstacle } from '../levels/levelTypes';
 import type { AimPreview } from '../input/shotMath';
-import { EffectSystem, getDebugPrimitives } from './effects';
+import { EffectSystem, ObstacleRevealEffect, getDebugPrimitives } from './effects';
 
 const TARGET_MARBLE_SOURCE_SIZE = 54;
 const TARGET_MARBLE_TEXTURE_SIZE = 216;
@@ -150,6 +150,7 @@ function getShooterMarbleTexture(): HTMLCanvasElement {
 }
 
 export function getObstaclePaint(obstacle: ResolvedObstacle) {
+  if (obstacle.shape === 'rectangle' && obstacle.hidden) return null;
   return {
     fill: obstacle.color,
     stroke: null,
@@ -171,8 +172,15 @@ export function getObstacleRect(obstacle: ResolvedRectangleObstacle) {
   } as const;
 }
 
+export function getAimPaint(locked: boolean) {
+  return locked
+    ? { stroke: 'rgba(215,141,57,.96)', lineWidth: 3.5, lineDash: [] as number[], endpointRadius: 4 }
+    : { stroke: 'rgba(31,31,31,.72)', lineWidth: 2, lineDash: [6, 6], endpointRadius: 0 };
+}
+
 export class CanvasRenderer {
   readonly effects = new EffectSystem();
+  private readonly obstacleReveal = new ObstacleRevealEffect();
   private readonly context: CanvasRenderingContext2D;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
@@ -199,6 +207,7 @@ export class CanvasRenderer {
     context.fillRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
     this.drawBaseline();
     this.drawObstacles(frame.obstacles);
+    this.obstacleReveal.update(frame.deltaMs);
 
     for (const snapshot of frame.snapshots) {
       if (snapshot.kind === 'shooter') {
@@ -215,7 +224,7 @@ export class CanvasRenderer {
       }
     }
 
-    if (frame.aim && frame.state === 'aiming') this.drawAim(frame.aim);
+    if (frame.aim && (frame.state === 'positioning' || frame.state === 'aiming')) this.drawAim(frame.aim);
     this.effects.update(frame.deltaMs);
     const effects = this.effects.snapshot();
     for (const fade of effects.fades) {
@@ -248,6 +257,11 @@ export class CanvasRenderer {
 
   clearEffects(): void {
     this.effects.clearEffects();
+    this.obstacleReveal.clear();
+  }
+
+  revealObstacle(id: string): void {
+    this.obstacleReveal.trigger(id);
   }
 
   private drawBaseline() {
@@ -266,10 +280,15 @@ export class CanvasRenderer {
     c.clip();
     for (const obstacle of obstacles) {
       const paint = getObstaclePaint(obstacle);
+      const revealAlpha = obstacle.shape === 'rectangle' && obstacle.hidden
+        ? this.obstacleReveal.alphaFor(obstacle.id)
+        : 0;
+      if (!paint && revealAlpha === 0) continue;
       c.save();
+      c.globalAlpha = revealAlpha || 1;
       c.shadowColor = 'transparent';
-      c.shadowBlur = paint.shadowBlur;
-      c.fillStyle = paint.fill;
+      c.shadowBlur = paint?.shadowBlur ?? 0;
+      c.fillStyle = revealAlpha > 0 ? '#808080' : paint!.fill;
       if (obstacle.shape === 'rectangle') {
         const rect = getObstacleRect(obstacle);
         c.fillRect(rect.x, rect.y, rect.width, rect.height);
@@ -335,16 +354,25 @@ export class CanvasRenderer {
     const length = 45 + aim.power * 120;
     const ux = aim.velocity.x / aim.speed;
     const uy = aim.velocity.y / aim.speed;
-    c.strokeStyle = 'rgba(31,31,31,.78)';
-    c.lineWidth = 1.5;
-    c.setLineDash([4, 8]);
+    const paint = getAimPaint(aim.locked);
+    const endX = aim.origin.x + ux * length;
+    const endY = aim.origin.y + uy * length;
+    c.strokeStyle = paint.stroke;
+    c.lineWidth = paint.lineWidth;
+    c.setLineDash(paint.lineDash);
     c.beginPath();
     c.moveTo(aim.origin.x + ux * 22, aim.origin.y + uy * 22);
-    c.lineTo(aim.origin.x + ux * length, aim.origin.y + uy * length);
+    c.lineTo(endX, endY);
     c.stroke();
     c.setLineDash([]);
-    c.strokeStyle = `rgba(31,31,31,${0.25 + aim.power * 0.6})`;
-    c.lineWidth = 2.5;
+    if (paint.endpointRadius > 0) {
+      c.fillStyle = paint.stroke;
+      c.beginPath();
+      c.arc(endX, endY, paint.endpointRadius, 0, Math.PI * 2);
+      c.fill();
+    }
+    c.strokeStyle = aim.locked ? paint.stroke : `rgba(31,31,31,${0.25 + aim.power * 0.6})`;
+    c.lineWidth = aim.locked ? 3.5 : 2.5;
     c.beginPath();
     c.arc(aim.origin.x, aim.origin.y, 23, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * aim.power);
     c.stroke();

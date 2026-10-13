@@ -23,6 +23,39 @@ export interface FadeMarble {
   lifeMs: number;
 }
 
+const OBSTACLE_REVEAL_TOTAL_MS = 260;
+const OBSTACLE_REVEAL_FADE_MS = 200;
+const OBSTACLE_REVEAL_MAX_ALPHA = 0.15;
+
+export class ObstacleRevealEffect {
+  private activeId: string | null = null;
+  private remainingMs = 0;
+
+  trigger(id: string): boolean {
+    if (this.activeId !== null) return false;
+    this.activeId = id;
+    this.remainingMs = OBSTACLE_REVEAL_TOTAL_MS;
+    return true;
+  }
+
+  update(deltaMs: number): void {
+    if (this.activeId === null) return;
+    this.remainingMs = Math.max(0, this.remainingMs - Math.max(0, deltaMs));
+    if (this.remainingMs === 0) this.activeId = null;
+  }
+
+  alphaFor(id: string): number {
+    if (id !== this.activeId) return 0;
+    if (this.remainingMs >= OBSTACLE_REVEAL_FADE_MS) return OBSTACLE_REVEAL_MAX_ALPHA;
+    return OBSTACLE_REVEAL_MAX_ALPHA * this.remainingMs / OBSTACLE_REVEAL_FADE_MS;
+  }
+
+  clear(): void {
+    this.activeId = null;
+    this.remainingMs = 0;
+  }
+}
+
 export class EffectSystem {
   private particles: Particle[] = [];
   private fades: FadeMarble[] = [];

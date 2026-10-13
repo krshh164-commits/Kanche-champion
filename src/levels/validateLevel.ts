@@ -31,6 +31,7 @@ export function resolveLevel(level: LevelDefinition, geometry: LevelGeometry): R
           width: obstacle.width * boundaryWidth,
           height: obstacle.height * boundaryHeight,
           edgeClipped: obstacle.edgeClipped,
+          hidden: obstacle.hidden,
           color: obstacle.color,
         };
       if (obstacle.shape === 'arc') return {

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { SHOOTER_MAX_X, SHOOTER_MIN_X } from '../src/config';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SHOOTER_MAX_X, SHOOTER_MIN_X, SHOOTER_RADIUS } from '../src/config';
 import { ShotController } from '../src/input/ShotController';
 import type { GameState } from '../src/game/gameState';
 
@@ -9,6 +9,28 @@ function pointer(type: string, x: number, y: number, id = 1, pointerType = 'mous
   Object.assign(event, { clientX: x, clientY: y, pointerId: id, pointerType, button: 0 });
   Object.defineProperty(event, 'timeStamp', { value: timeStamp });
   return event;
+}
+
+let animationFrames: Map<number, FrameRequestCallback>;
+let nextFrameId: number;
+
+beforeEach(() => {
+  animationFrames = new Map();
+  nextFrameId = 1;
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+    const id = nextFrameId++;
+    animationFrames.set(id, callback);
+    return id;
+  });
+  vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((id) => {
+    animationFrames.delete(id);
+  });
+});
+
+function flushAnimationFrames() {
+  const callbacks = [...animationFrames.values()];
+  animationFrames.clear();
+  callbacks.forEach((callback) => callback(16));
 }
 
 function setup(initialState: GameState = 'positioning') {
@@ -42,13 +64,15 @@ function setup(initialState: GameState = 'positioning') {
 afterEach(() => { document.body.innerHTML = ''; vi.restoreAllMocks(); });
 
 describe('ShotController', () => {
-  it('launches from positioning with one forward swipe for mouse or touch', () => {
+  it('locks and automatically launches from positioning without waiting for release', () => {
     for (const pointerType of ['mouse', 'touch']) {
       const s = setup();
       s.canvas.dispatchEvent(pointer('pointerdown', 210, 664, 1, pointerType, 100));
       s.canvas.dispatchEvent(pointer('pointermove', 230, 614, 1, pointerType, 150));
-      s.canvas.dispatchEvent(pointer('pointerup', 240, 574, 1, pointerType, 190));
-      expect(s.onPosition).not.toHaveBeenCalled();
+      expect(s.onAim.mock.calls.at(-1)?.[0]).toMatchObject({ locked: true });
+      expect(s.onShoot).not.toHaveBeenCalled();
+      flushAnimationFrames();
+      expect(s.onPosition).toHaveBeenCalledWith(210);
       expect(s.onPositionConfirmed).toHaveBeenCalledOnce();
       expect(s.onShoot).toHaveBeenCalledOnce();
       expect(s.onShoot.mock.calls[0]?.[0].velocity).toMatchObject({ x: expect.any(Number), y: expect.any(Number) });
@@ -56,6 +80,8 @@ describe('ShotController', () => {
       expect(s.onShoot.mock.calls[0]?.[0].velocity.y).toBeLessThan(0);
       expect(s.setCapture).toHaveBeenCalledWith(1);
       expect(s.releaseCapture).toHaveBeenCalledWith(1);
+      s.canvas.dispatchEvent(pointer('pointerup', 240, 574, 1, pointerType, 190));
+      expect(s.onShoot).toHaveBeenCalledOnce();
       s.controller.destroy();
     }
   });
@@ -72,7 +98,7 @@ describe('ShotController', () => {
 
     s.canvas.dispatchEvent(pointer('pointerdown', 126, 664, 2, 'touch', 220));
     s.canvas.dispatchEvent(pointer('pointermove', 148, 600, 2, 'touch', 270));
-    s.canvas.dispatchEvent(pointer('pointerup', 158, 554, 2, 'touch', 300));
+    flushAnimationFrames();
 
     expect(s.onPositionConfirmed).toHaveBeenCalledOnce();
     expect(s.onShoot).toHaveBeenCalledOnce();
@@ -86,20 +112,84 @@ describe('ShotController', () => {
     s.canvas.dispatchEvent(pointer('pointermove', 600, 664, 1, 'mouse', 170));
     s.canvas.dispatchEvent(pointer('pointerup', 600, 664, 1, 'mouse', 180));
 
+    expect(s.onPosition.mock.calls.map(([x]) => x)).toEqual([210, SHOOTER_MIN_X, SHOOTER_MAX_X]);
+    expect(s.onPositionConfirmed).not.toHaveBeenCalled();
+    expect(s.onShoot).not.toHaveBeenCalled();
+  });
+
+  it('repositions on pad taps, keeps the full striker inside, and ignores outside taps', () => {
+    const s = setup();
+    expect(SHOOTER_MIN_X).toBe(54 + SHOOTER_RADIUS);
+    expect(SHOOTER_MAX_X).toBe(366 - SHOOTER_RADIUS);
+
+    s.canvas.dispatchEvent(pointer('pointerdown', 54, 664, 1, 'touch', 100));
+    s.canvas.dispatchEvent(pointer('pointerup', 54, 664, 1, 'touch', 120));
+    s.canvas.dispatchEvent(pointer('pointerdown', 366, 664, 2, 'touch', 200));
+    s.canvas.dispatchEvent(pointer('pointerup', 366, 664, 2, 'touch', 220));
+    s.canvas.dispatchEvent(pointer('pointerdown', 180, 620, 3, 'touch', 300));
+    s.canvas.dispatchEvent(pointer('pointerup', 180, 620, 3, 'touch', 320));
+
     expect(s.onPosition.mock.calls.map(([x]) => x)).toEqual([SHOOTER_MIN_X, SHOOTER_MAX_X]);
     expect(s.onPositionConfirmed).not.toHaveBeenCalled();
     expect(s.onShoot).not.toHaveBeenCalled();
   });
 
-  it('rejects rapid taps and emits one valid outside-canvas shot', () => {
+  it('repositions and launches from a swipe that starts anywhere on the pad', () => {
+    const s = setup();
+    s.canvas.dispatchEvent(pointer('pointerdown', 118, 664, 1, 'touch', 100));
+    expect(s.onPosition).toHaveBeenLastCalledWith(118);
+    s.canvas.dispatchEvent(pointer('pointermove', 142, 606, 1, 'touch', 150));
+    flushAnimationFrames();
+
+    expect(s.onPositionConfirmed).toHaveBeenCalledOnce();
+    expect(s.onShoot).toHaveBeenCalledOnce();
+    expect(s.onShoot.mock.calls[0]?.[0].velocity).toMatchObject({
+      x: expect.any(Number),
+      y: expect.any(Number),
+    });
+  });
+
+  it('ignores tiny movement, previews a short swipe, and launches only after the threshold', () => {
     const s = setup('aiming');
     s.canvas.dispatchEvent(pointer('pointerdown', 210, 664, 1, 'mouse', 100));
-    s.canvas.dispatchEvent(pointer('pointerup', 210, 664, 1, 'mouse', 120));
+    s.canvas.dispatchEvent(pointer('pointermove', 213, 660, 1, 'mouse', 110));
     expect(s.onShoot).not.toHaveBeenCalled();
+    s.canvas.dispatchEvent(pointer('pointermove', 214, 646, 1, 'mouse', 130));
+    expect(s.onAim.mock.calls.at(-1)?.[0]).toMatchObject({ locked: false });
+    s.canvas.dispatchEvent(pointer('pointerup', 214, 646, 1, 'mouse', 140));
+    expect(s.onShoot).not.toHaveBeenCalled();
+
     s.canvas.dispatchEvent(pointer('pointerdown', 210, 664, 2, 'mouse', 200));
-    s.canvas.dispatchEvent(pointer('pointermove', 210, 560, 2, 'mouse', 260));
-    s.canvas.dispatchEvent(pointer('pointerup', 210, 520, 2, 'mouse', 280));
+    s.canvas.dispatchEvent(pointer('pointermove', 214, 630, 2, 'mouse', 240));
+    expect(s.onAim.mock.calls.at(-1)?.[0]).toMatchObject({ locked: true });
+    flushAnimationFrames();
     expect(s.onShoot).toHaveBeenCalledOnce();
+  });
+
+  it('uses a large invisible striker hit area without skewing the swipe direction', () => {
+    const s = setup('aiming');
+    s.canvas.dispatchEvent(pointer('pointerdown', 270, 664, 1, 'touch', 100));
+    s.canvas.dispatchEvent(pointer('pointermove', 270, 624, 1, 'touch', 150));
+    flushAnimationFrames();
+
+    expect(s.setCapture).toHaveBeenCalledWith(1);
+    expect(s.onShoot).toHaveBeenCalledOnce();
+    expect(s.onShoot.mock.calls[0]?.[0].velocity.x).toBeCloseTo(0);
+    expect(s.onShoot.mock.calls[0]?.[0].velocity.y).toBeLessThan(0);
+  });
+
+  it('locks the smoothed direction and ignores later pointer jitter', () => {
+    const s = setup('aiming');
+    s.canvas.dispatchEvent(pointer('pointerdown', 210, 664, 1, 'touch', 100));
+    s.canvas.dispatchEvent(pointer('pointermove', 214, 648, 1, 'touch', 120));
+    s.canvas.dispatchEvent(pointer('pointermove', 220, 630, 1, 'touch', 140));
+    const locked = s.onAim.mock.calls.at(-1)?.[0];
+    s.canvas.dispatchEvent(pointer('pointermove', 120, 700, 1, 'touch', 150));
+    flushAnimationFrames();
+
+    expect(locked).toMatchObject({ locked: true });
+    expect(s.onShoot.mock.calls[0]?.[0].velocity.x).toBeGreaterThan(0);
+    expect(s.onShoot.mock.calls[0]?.[0].velocity.y).toBeLessThan(0);
   });
 
   it('owns one pointer, cancels exactly once, and ignores locked states', () => {

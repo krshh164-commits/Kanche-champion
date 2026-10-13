@@ -5,8 +5,8 @@ export const VIRTUAL_HEIGHT = 780;
 export const TARGET_RADIUS = 24;
 export const SHOOTER_RADIUS = 24;
 export const SHOOTER_BASELINE_Y = 664;
-export const SHOOTER_MIN_X = 66;
-export const SHOOTER_MAX_X = 354;
+export const SHOOTER_MIN_X = 78;
+export const SHOOTER_MAX_X = 342;
 export const LEVEL_LAYOUT_BOUNDS: Bounds = { left: 44, right: 376, top: 116, bottom: 558 };
 export const BOARD_BOUNDS: Bounds = { left: 0, right: VIRTUAL_WIDTH, top: 0, bottom: VIRTUAL_HEIGHT };
 export const DEBUG_PHYSICS = false;
@@ -25,10 +25,13 @@ export const PHYSICS = {
 } as const;
 
 export const SHOT = {
-  minDrag: 12,
+  deadZone: 6,
+  aimThreshold: 32,
   maxDrag: 110,
+  minVelocity: 14,
   maxVelocity: 28,
-  maxSwipeSpeed: 1.4,
+  minUpwardRatio: 0.28,
+  directionSmoothing: 0.35,
 } as const;
 
 export const COLORS = {

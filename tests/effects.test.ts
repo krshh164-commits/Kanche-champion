@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EffectSystem, getDebugPrimitives } from '../src/render/effects';
+import { EffectSystem, ObstacleRevealEffect, getDebugPrimitives } from '../src/render/effects';
 import { getMarblePaint } from '../src/render/CanvasRenderer';
 
 const marble = { id: 'target-1', kind: 'target' as const, x: 100, y: 100, radius: 13, speed: 0, angle: 0.75, angularVelocity: 0 };
@@ -36,5 +36,23 @@ describe('EffectSystem', () => {
       shadowOffsetY: 0,
       highlight: false,
     });
+  });
+
+  it('reveals one obstacle at 15% opacity and ignores repeated triggers until its fade completes', () => {
+    const reveal = new ObstacleRevealEffect();
+    expect(reveal.trigger('level-7-hidden-center-square')).toBe(true);
+    expect(reveal.alphaFor('level-7-hidden-center-square')).toBe(0.15);
+
+    reveal.update(100);
+    const fadingAlpha = reveal.alphaFor('level-7-hidden-center-square');
+    expect(fadingAlpha).toBeGreaterThan(0);
+    expect(fadingAlpha).toBeLessThan(0.15);
+    expect(reveal.trigger('level-7-hidden-center-square')).toBe(false);
+
+    reveal.update(200);
+    expect(reveal.alphaFor('level-7-hidden-center-square')).toBe(0);
+    expect(reveal.trigger('level-7-hidden-center-square')).toBe(true);
+    reveal.clear();
+    expect(reveal.alphaFor('level-7-hidden-center-square')).toBe(0);
   });
 });

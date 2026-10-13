@@ -22,6 +22,7 @@ export interface RectangleObstacleDefinition {
   width: number;
   height: number;
   edgeClipped?: boolean;
+  hidden?: boolean;
   color: '#1E1E1E';
 }
 
@@ -95,6 +96,7 @@ export interface ResolvedRectangleObstacle {
   width: number;
   height: number;
   edgeClipped?: boolean;
+  hidden?: boolean;
   color: '#1E1E1E';
 }
 
