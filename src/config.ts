@@ -25,13 +25,10 @@ export const PHYSICS = {
 } as const;
 
 export const SHOT = {
-  deadZone: 6,
-  aimThreshold: 32,
+  minDrag: 12,
   maxDrag: 110,
-  minVelocity: 14,
   maxVelocity: 28,
-  minUpwardRatio: 0.28,
-  directionSmoothing: 0.35,
+  maxSwipeSpeed: 1.4,
 } as const;
 
 export const COLORS = {

@@ -1,7 +1,7 @@
 import { SHOOTER_BASELINE_Y, SHOOTER_MAX_X, SHOOTER_MIN_X, SHOOTER_RADIUS, SHOT, VIRTUAL_HEIGHT, VIRTUAL_WIDTH } from '../config';
 import type { GameState } from '../game/gameState';
 import type { Point } from '../game/rules';
-import { calculateAimPreview, calculateShot, clampShooterX, smoothSwipeDirection, type AimPreview, type ShotVector } from './shotMath';
+import { calculateShot, clampShooterX, type AimPreview, type ShotVector } from './shotMath';
 
 interface Options {
   getState(): GameState;
@@ -20,8 +20,6 @@ export class ShotController {
   private gestureMode: 'pending' | 'positioning' | 'aiming' | null = null;
   private grabOffsetX = 0;
   private gestureStartedAt = 0;
-  private smoothedDirection: Point | null = null;
-  private launchFrame: number | null = null;
   private destroyed = false;
 
   constructor(private readonly canvas: HTMLCanvasElement, private readonly options: Options) {
@@ -41,7 +39,7 @@ export class ShotController {
 
   private hitsShooter(point: Point): boolean {
     const shooter = this.options.getShooter();
-    return Math.hypot(point.x - shooter.x, point.y - shooter.y) <= SHOOTER_RADIUS * 2.75;
+    return Math.hypot(point.x - shooter.x, point.y - shooter.y) <= SHOOTER_RADIUS * 1.8;
   }
 
   private hitsShooterPad(point: Point): boolean {
@@ -51,7 +49,7 @@ export class ShotController {
   }
 
   private onPointerDown = (event: PointerEvent) => {
-    if (this.destroyed || this.activePointer !== null || this.launchFrame !== null || event.button !== 0) return;
+    if (this.destroyed || this.activePointer !== null || event.button !== 0) return;
     const state = this.options.getState();
     if (state !== 'positioning' && state !== 'aiming') return;
     const point = this.toVirtual(event);
@@ -66,7 +64,6 @@ export class ShotController {
     this.gestureMode = state === 'positioning' ? 'pending' : 'aiming';
     this.grabOffsetX = point.x - this.gestureOrigin.x;
     this.gestureStartedAt = event.timeStamp;
-    this.smoothedDirection = null;
     this.canvas.setPointerCapture(event.pointerId);
   };
 
@@ -75,56 +72,32 @@ export class ShotController {
     event.preventDefault();
     if (!this.gestureOrigin || !this.pointerOrigin) return;
     const point = this.toVirtual(event);
-    const dx = point.x - this.pointerOrigin.x;
-    const dy = point.y - this.pointerOrigin.y;
-    const distance = Math.hypot(dx, dy);
     if (this.gestureMode === 'pending') {
-      if (Math.abs(dx) >= SHOT.aimThreshold && Math.abs(dx) > Math.abs(dy) * 1.5) this.gestureMode = 'positioning';
+      const dx = point.x - this.pointerOrigin.x;
+      const dy = point.y - this.pointerOrigin.y;
+      if (Math.abs(dx) >= SHOT.minDrag && Math.abs(dx) > Math.abs(dy)) this.gestureMode = 'positioning';
+      else if (calculateShot(this.gestureOrigin, point, event.timeStamp - this.gestureStartedAt, SHOT)) this.gestureMode = 'aiming';
     }
     if (this.gestureMode === 'positioning') {
       this.options.onPosition(clampShooterX(point.x - this.grabOffsetX, SHOOTER_MIN_X, SHOOTER_MAX_X));
       this.options.onAim(null);
       return;
     }
-    if (distance < SHOT.deadZone) return;
-
-    const direction = smoothSwipeDirection(this.smoothedDirection, { x: dx, y: dy }, SHOT.directionSmoothing);
-    const projectedPointer = {
-      x: this.gestureOrigin.x + dx,
-      y: this.gestureOrigin.y + dy,
-    };
-    const duration = event.timeStamp - this.gestureStartedAt;
-    const preview = calculateAimPreview(this.gestureOrigin, projectedPointer, duration, SHOT, direction);
-    if (!preview) {
-      this.smoothedDirection = null;
-      this.options.onAim(null);
-      return;
-    }
-
-    this.smoothedDirection = direction;
-    this.gestureMode = 'aiming';
-    const shot = calculateShot(this.gestureOrigin, projectedPointer, duration, SHOT, direction);
-    if (!shot) {
-      this.options.onAim({ ...preview, pointer: point, locked: false });
-      return;
-    }
-
-    this.options.onAim({ ...shot, origin: { ...this.gestureOrigin }, pointer: point, locked: true });
-    if (this.options.getState() === 'positioning') this.options.onPositionConfirmed();
-    const pointerId = event.pointerId;
-    this.finishCapture(pointerId);
-    this.launchFrame = requestAnimationFrame(() => {
-      this.launchFrame = null;
-      this.options.onAim(null);
-      this.options.onShoot(shot);
-    });
+    const shot = calculateShot(this.gestureOrigin, point, event.timeStamp - this.gestureStartedAt, SHOT);
+    this.options.onAim(shot ? { ...shot, origin: { ...this.gestureOrigin }, pointer: point } : null);
   };
 
   private onPointerUp = (event: PointerEvent) => {
     if (event.pointerId !== this.activePointer) return;
     event.preventDefault();
+    const shot = this.gestureMode !== 'positioning' && this.gestureOrigin
+      ? calculateShot(this.gestureOrigin, this.toVirtual(event), event.timeStamp - this.gestureStartedAt, SHOT)
+      : null;
     this.options.onAim(null);
-    if (this.gestureMode !== 'positioning') this.options.onCancel();
+    if (shot) {
+      this.options.onPositionConfirmed();
+      this.options.onShoot(shot);
+    } else if (this.gestureMode !== 'positioning') this.options.onCancel();
     this.finishCapture(event.pointerId);
   };
 
@@ -144,16 +117,9 @@ export class ShotController {
     this.gestureMode = null;
     this.grabOffsetX = 0;
     this.gestureStartedAt = 0;
-    this.smoothedDirection = null;
   }
 
   reset(): void {
-    if (this.launchFrame !== null) {
-      cancelAnimationFrame(this.launchFrame);
-      this.launchFrame = null;
-      this.options.onAim(null);
-      this.options.onCancel();
-    }
     if (this.activePointer !== null) {
       const pointerId = this.activePointer;
       this.options.onAim(null);

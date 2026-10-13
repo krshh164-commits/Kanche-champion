@@ -172,10 +172,8 @@ export function getObstacleRect(obstacle: ResolvedRectangleObstacle) {
   } as const;
 }
 
-export function getAimPaint(locked: boolean) {
-  return locked
-    ? { stroke: 'rgba(215,141,57,.96)', lineWidth: 3.5, lineDash: [] as number[], endpointRadius: 4 }
-    : { stroke: 'rgba(31,31,31,.72)', lineWidth: 2, lineDash: [6, 6], endpointRadius: 0 };
+export function getAimPaint() {
+  return { stroke: 'rgba(31,31,31,.78)', lineWidth: 1.5, lineDash: [4, 8], endpointRadius: 0 } as const;
 }
 
 export function getShooterShadow(state: GameState) {
@@ -373,7 +371,7 @@ export class CanvasRenderer {
     const length = 45 + aim.power * 120;
     const ux = aim.velocity.x / aim.speed;
     const uy = aim.velocity.y / aim.speed;
-    const paint = getAimPaint(aim.locked);
+    const paint = getAimPaint();
     const endX = aim.origin.x + ux * length;
     const endY = aim.origin.y + uy * length;
     c.strokeStyle = paint.stroke;
@@ -390,8 +388,8 @@ export class CanvasRenderer {
       c.arc(endX, endY, paint.endpointRadius, 0, Math.PI * 2);
       c.fill();
     }
-    c.strokeStyle = aim.locked ? paint.stroke : `rgba(31,31,31,${0.25 + aim.power * 0.6})`;
-    c.lineWidth = aim.locked ? 3.5 : 2.5;
+    c.strokeStyle = `rgba(31,31,31,${0.25 + aim.power * 0.6})`;
+    c.lineWidth = 2.5;
     c.beginPath();
     c.arc(aim.origin.x, aim.origin.y, 23, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * aim.power);
     c.stroke();

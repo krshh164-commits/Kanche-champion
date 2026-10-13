@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SHOT } from '../src/config';
-import { calculateAimPreview, calculateShot, clampShooterX, smoothSwipeDirection } from '../src/input/shotMath';
+import { calculateShot, clampShooterX } from '../src/input/shotMath';
 
 const limits = SHOT;
 
@@ -11,11 +11,10 @@ describe('shot math', () => {
     expect(clampShooterX(400, 66, 354)).toBe(354);
   });
 
-  it('uses a dead zone and rejects pre-threshold, horizontal, and downward swipes', () => {
+  it('rejects accidental, horizontal, and downward swipes while accepting a short upward swipe', () => {
     const origin = { x: 200, y: 664 };
     expect(calculateShot(origin, origin, 120, limits)).toBeNull();
-    expect(calculateShot(origin, { x: 200, y: 644 }, 120, limits)).toBeNull();
-    expect(calculateAimPreview(origin, { x: 200, y: 644 }, 120, limits)).toMatchObject({ locked: false });
+    expect(calculateShot(origin, { x: 200, y: 644 }, 120, limits)).not.toBeNull();
     expect(calculateShot(origin, { x: 200, y: 675 }, 120, limits)).toBeNull();
     expect(calculateShot(origin, { x: 188, y: 664 }, 120, limits)).toBeNull();
   });
@@ -34,25 +33,14 @@ describe('shot math', () => {
     expect(long?.dragDistance).toBe(110);
   });
 
-  it('uses swipe distance only with useful minimum and capped maximum speeds', () => {
+  it('uses both swipe distance and swipe speed for shot strength', () => {
     const origin = { x: 200, y: 664 };
-    const shortFast = calculateShot(origin, { x: 200, y: 632 }, 35, limits)!;
-    const shortSlow = calculateShot(origin, { x: 200, y: 632 }, 500, limits)!;
+    const shortFast = calculateShot(origin, { x: 200, y: 642 }, 35, limits)!;
     const longSlow = calculateShot(origin, { x: 200, y: 574 }, 500, limits)!;
     const longFast = calculateShot(origin, { x: 200, y: 574 }, 80, limits)!;
 
-    expect(shortFast.speed).toBeCloseTo(limits.minVelocity);
-    expect(shortSlow.speed).toBeCloseTo(shortFast.speed);
     expect(longSlow.speed).toBeGreaterThan(shortFast.speed);
-    expect(longFast.speed).toBeCloseTo(longSlow.speed);
+    expect(longFast.speed).toBeGreaterThan(longSlow.speed);
     expect(longFast.speed).toBeLessThanOrEqual(limits.maxVelocity);
-  });
-
-  it('smooths direction jitter while keeping the resulting direction normalized', () => {
-    const direction = smoothSwipeDirection({ x: 0, y: -1 }, { x: 0.6, y: -0.8 }, 0.35);
-    expect(Math.hypot(direction.x, direction.y)).toBeCloseTo(1);
-    expect(direction.x).toBeGreaterThan(0);
-    expect(direction.x).toBeLessThan(0.6);
-    expect(direction.y).toBeLessThan(0);
   });
 });
